@@ -1,0 +1,27 @@
+// MC2Hytale - one Minecraft block in the converter window (ConverterPage.fillBlocks):
+// its id and count, what it becomes (one of three coloured labels is shown), and a Change button.
+$C = "../../Common.ui";
+
+@Mc2RowNameStyle = (...$C.@DefaultLabelStyle, FontSize: 15, RenderBold: true, TextColor: #ffffff);
+@Mc2RowOkStyle = (...$C.@DefaultLabelStyle, FontSize: 13, TextColor: #7fe08a);
+@Mc2RowWarnStyle = (...$C.@DefaultLabelStyle, FontSize: 13, TextColor: #f0c050);
+@Mc2RowBadStyle = (...$C.@DefaultLabelStyle, FontSize: 13, TextColor: #ff6b6b);
+@Mc2RowGreyStyle = (...$C.@DefaultLabelStyle, FontSize: 13, TextColor: #9aa6b5);
+
+Group {
+  LayoutMode: Left;
+  Anchor: (Bottom: 4);
+  Background: (Color: #0b1018(0.6));
+  Padding: (Full: 6);
+
+  Group {
+    FlexWeight: 1;
+    LayoutMode: Top;
+    Label #Mc2Name { Text: ""; Style: @Mc2RowNameStyle; }
+    Label #Mc2Ok { Text: ""; Style: @Mc2RowOkStyle; Visible: false; }
+    Label #Mc2Warn { Text: ""; Style: @Mc2RowWarnStyle; Visible: false; }
+    Label #Mc2Bad { Text: ""; Style: @Mc2RowBadStyle; Visible: false; }
+    Label #Mc2Grey { Text: ""; Style: @Mc2RowGreyStyle; Visible: false; }
+  }
+  $C.@SmallSecondaryTextButton #Mc2Change { @Text = "Change"; Anchor: (Width: 96, Height: $C.@SmallButtonHeight, Top: 4); }
+}

@@ -1,0 +1,129 @@
+// MC2Hytale - the converter window (ConverterPage.java), opened with /mc2h gui.
+// Left: schematics in the folder and the mapping profile. Right: the picked schematic's blocks,
+// filter buttons, and the editor for changing what a block becomes.
+// Every style here is prefixed Mc2 so it can never clash with Common.ui or another mod's names.
+$C = "../../Common.ui";
+
+@Mc2HeadingStyle = (...$C.@DefaultLabelStyle, FontSize: 18, RenderBold: true, RenderUppercase: true, TextColor: #E8A93B);
+@Mc2InfoStyle = (...$C.@DefaultLabelStyle, FontSize: 14, Wrap: true, TextColor: #c9d3e0);
+@Mc2MutedStyle = (...$C.@DefaultLabelStyle, FontSize: 13, Wrap: true, TextColor: #8fa3bd);
+@Mc2StatusStyle = (...$C.@DefaultLabelStyle, FontSize: 14, Wrap: true, TextColor: #E8A93B);
+
+$C.@PageOverlay {
+  LayoutMode: Middle;
+
+  $C.@DecoratedContainer {
+    Anchor: (Width: 1180, Height: 780);
+
+    #Title {
+      $C.@Title {
+        @Text = "MC2Hytale Converter";
+      }
+    }
+
+    #Content {
+      LayoutMode: Left;
+      Padding: (Full: 18);
+
+      // ---- left column: files and profile ----
+      Group {
+        Anchor: (Width: 300, Right: 16);
+        LayoutMode: Top;
+
+        Label { Text: "Schematics"; Style: @Mc2HeadingStyle; Anchor: (Bottom: 4); }
+        Label #Mc2Folder { Text: ""; Style: @Mc2MutedStyle; Anchor: (Bottom: 8); }
+        Group #Mc2FileList {
+          FlexWeight: 1;
+          LayoutMode: TopScrolling;
+          ScrollbarStyle: $C.@DefaultScrollbarStyle;
+          Background: (Color: #0b1018(0.45));
+          Padding: (Full: 6);
+        }
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 40, Top: 8);
+          $C.@SecondaryTextButton #Mc2Refresh { @Text = "Refresh"; @Anchor = (Width: 138, Right: 8); }
+          $C.@SecondaryTextButton #Mc2ConvertAll { @Text = "Convert all"; @Anchor = (Width: 154); }
+        }
+
+        Label { Text: "Mapping profile"; Style: @Mc2HeadingStyle; Anchor: (Top: 16, Bottom: 4); }
+        Label #Mc2Profile { Text: ""; Style: @Mc2InfoStyle; Anchor: (Bottom: 6); }
+        $C.@TextField #Mc2ProfileInput { @Anchor = (Bottom: 6); PlaceholderText: "profile name"; }
+        $C.@SecondaryTextButton #Mc2ProfileGo { @Text = "Switch / create"; @Anchor = (Height: 40); }
+      }
+
+      // ---- right column: blocks of the picked schematic ----
+      Group {
+        FlexWeight: 1;
+        LayoutMode: Top;
+
+        Label #Mc2FileTitle { Text: "Pick a schematic"; Style: @Mc2HeadingStyle; Anchor: (Bottom: 4); }
+        Label #Mc2Summary { Text: "Put .schem, .schematic or .nbt files in the schematics folder, then pick one on the left."; Style: @Mc2InfoStyle; Anchor: (Bottom: 8); }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 44, Bottom: 8);
+          $C.@TextButton #Mc2Convert { @Text = "Convert to prefab"; @Anchor = (Width: 230, Right: 8); }
+          $C.@SecondaryTextButton #Mc2Paste { @Text = "Paste where I stand"; @Anchor = (Width: 230, Right: 8); }
+          $C.@SecondaryTextButton #Mc2Rescan { @Text = "Rescan"; @Anchor = (Width: 130); }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 34, Bottom: 6);
+          $C.@SmallSecondaryTextButton #Mc2TabAll { @Text = "All"; Anchor: (Width: 110, Height: $C.@SmallButtonHeight, Right: 6); }
+          $C.@SmallSecondaryTextButton #Mc2TabProblems { @Text = "Problems"; Anchor: (Width: 130, Height: $C.@SmallButtonHeight, Right: 6); }
+          $C.@SmallSecondaryTextButton #Mc2TabAuto { @Text = "Auto"; Anchor: (Width: 110, Height: $C.@SmallButtonHeight, Right: 6); }
+          $C.@SmallSecondaryTextButton #Mc2TabCustom { @Text = "My rules"; Anchor: (Width: 130, Height: $C.@SmallButtonHeight, Right: 6); }
+          $C.@SmallSecondaryTextButton #Mc2TabSkipped { @Text = "Skipped"; Anchor: (Width: 120, Height: $C.@SmallButtonHeight, Right: 12); }
+          Group {
+            FlexWeight: 1;
+            LayoutMode: Top;
+            Label #Mc2Filter { Text: ""; Style: @Mc2MutedStyle; Anchor: (Top: 6); }
+          }
+        }
+
+        Group #Mc2BlockList {
+          FlexWeight: 1;
+          LayoutMode: TopScrolling;
+          ScrollbarStyle: $C.@DefaultScrollbarStyle;
+          Background: (Color: #0b1018(0.45));
+          Padding: (Full: 6);
+        }
+
+        // Shown after pressing Change on a block row.
+        Group #Mc2Editor {
+          Visible: false;
+          LayoutMode: Top;
+          Anchor: (Top: 8);
+          Background: (Color: #142033(0.75));
+          Padding: (Full: 10);
+
+          Label #Mc2EditTitle { Text: ""; Style: @Mc2HeadingStyle; Anchor: (Bottom: 6); }
+          Group {
+            LayoutMode: Left;
+            Anchor: (Height: 40, Bottom: 6);
+            Group {
+              FlexWeight: 1;
+              LayoutMode: Top;
+              $C.@TextField #Mc2Target { @Anchor = (Right: 8); PlaceholderText: "Hytale block id - type to search"; }
+            }
+            $C.@TextButton #Mc2Apply { @Text = "Use this"; @Anchor = (Width: 140, Right: 6); }
+            $C.@SecondaryTextButton #Mc2Skip { @Text = "Leave out"; @Anchor = (Width: 140, Right: 6); }
+            $C.@SecondaryTextButton #Mc2Reset { @Text = "Default"; @Anchor = (Width: 120, Right: 6); }
+            $C.@SecondaryTextButton #Mc2Close { @Text = "Close"; @Anchor = (Width: 100); }
+          }
+          Group #Mc2Suggest {
+            Anchor: (Height: 120);
+            LayoutMode: TopScrolling;
+            ScrollbarStyle: $C.@DefaultScrollbarStyle;
+          }
+        }
+
+        Label #Mc2Status { Text: ""; Style: @Mc2StatusStyle; Anchor: (Top: 6); }
+      }
+    }
+  }
+}
+
+$C.@BackButton {}

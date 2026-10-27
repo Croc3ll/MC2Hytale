@@ -9,14 +9,16 @@ import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
 import com.hypixel.hytale.server.core.command.system.basecommands.AbstractCommandCollection;
 import com.hypixel.hytale.server.core.command.system.basecommands.AbstractPlayerCommand;
 import com.hypixel.hytale.server.core.command.system.basecommands.CommandBase;
+import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
-import com.hypixel.hytale.server.core.prefab.selection.standard.BlockSelection;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import com.mc2hytale.ConverterService;
 import com.mc2hytale.MC2HytalePlugin;
 import com.mc2hytale.convert.ConversionPlan;
+import com.mc2hytale.gui.ConverterPage;
+import com.mc2hytale.hytale.Jobs;
 import com.mc2hytale.hytale.PrefabExporter;
 import com.mc2hytale.mapping.BlockMapper.Resolution;
 import com.mc2hytale.mapping.BlockMapper.Status;
@@ -34,7 +36,8 @@ import java.util.function.Consumer;
 /**
  * {@code /mc2h} - the converter's commands:
  * <pre>
- * list                      schematics waiting in the schematics folder
+ * gui                       open the converter window
+ * list                     schematics waiting in the schematics folder
  * scan &lt;file&gt;               block list with counts and what each becomes (writes a CSV report)
  * problems &lt;file&gt;           only the blocks that have no good match
  * map &lt;minecraft&gt; &lt;hytale&gt;  add a replacement rule (wildcards: *_wool; hytale "skip" removes the block)
@@ -57,6 +60,7 @@ public final class MC2HytaleCommand extends AbstractCommandCollection {
         super("mc2h", "Minecraft schematic to Hytale prefab converter");
         addAliases("mc2hytale");
         requirePermission(PERMISSION);
+        addSubCommand(new GuiCmd());
         addSubCommand(new ListCmd());
         addSubCommand(new Scan("scan", "Show every block in a schematic and what it becomes", false));
         addSubCommand(new Scan("problems", "Show only blocks with no good Hytale match", true));
@@ -129,6 +133,23 @@ public final class MC2HytaleCommand extends AbstractCommandCollection {
         if (s.blockEntities() > 0 || s.entities() > 0) {
             out.accept(Msg.line(s.blockEntities() + " block entities (chest contents, sign text) and " + s.entities()
                     + " entities are not converted.", "#AAAAAA"));
+        }
+    }
+
+    private static final class GuiCmd extends AbstractPlayerCommand {
+        GuiCmd() {
+            super("gui", "Open the converter window");
+            addAliases("ui");
+            requirePermission(PERMISSION);
+        }
+
+        @Override
+        protected void execute(@Nonnull CommandContext ctx, @Nonnull Store<EntityStore> store, @Nonnull Ref<EntityStore> ref,
+                               @Nonnull PlayerRef player, @Nonnull World world) {
+            Player p = store.getComponent(ref, Player.getComponentType());
+            if (p != null) {
+                p.getPageManager().openCustomPage(ref, store, new ConverterPage(player));
+            }
         }
     }
 
@@ -300,10 +321,7 @@ public final class MC2HytaleCommand extends AbstractCommandCollection {
     /** Loads, maps, builds and saves one schematic. Returns the saved file. */
     private static Path convert(String name, Consumer<Message> out) throws Exception {
         ConversionPlan plan = service().plan(service().load(name));
-        String prefab = ConverterService.safeName(name);
-        plan.writeCsv(service().reportFile(prefab));
-        BlockSelection sel = PrefabExporter.build(plan, service().settings().includeAir);
-        Path saved = PrefabExporter.save(prefab, sel, true);
+        Path saved = Jobs.convert(service(), name, plan);
         summary(out, name, plan);
         if (!plan.problems().isEmpty()) {
             out.accept(Msg.warn(plan.problems().size() + " block type(s) had no good match - see /mc2h problems " + name));
@@ -372,19 +390,9 @@ public final class MC2HytaleCommand extends AbstractCommandCollection {
             Vector3i at = new Vector3i((int) Math.floor(pos.x()), (int) Math.floor(pos.y()), (int) Math.floor(pos.z()));
             String name = file.get(ctx);
             async(ctx, () -> {
-                Schematic s = service().load(name);
-                if (s.volume() > service().settings().pasteMaxVolume) {
-                    ctx.sendMessage(Msg.error("Too big to paste directly (" + s.volume() + " cells, limit "
-                            + service().settings().pasteMaxVolume + "). Use /mc2h convert and paste the prefab instead."));
-                    return;
-                }
-                ConversionPlan plan = service().plan(s);
-                BlockSelection sel = PrefabExporter.build(plan, service().settings().includeAir);
-                world.execute(() -> {
-                    sel.placeNoReturn(world, at, world.getEntityStore().getStore());
-                    ctx.sendMessage(Msg.success(String.format("Pasted %s (%,d blocks) at %d %d %d.",
-                            name, plan.placed(), at.x(), at.y(), at.z())));
-                });
+                ConversionPlan plan = service().plan(service().load(name));
+                Jobs.paste(service(), plan, world, at, () -> ctx.sendMessage(Msg.success(String.format(
+                        "Pasted %s (%,d blocks) at %d %d %d.", name, plan.placed(), at.x(), at.y(), at.z()))));
             });
         }
     }

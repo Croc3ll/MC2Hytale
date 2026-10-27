@@ -26,12 +26,22 @@ A Hytale server plugin that converts Minecraft schematics into Hytale prefabs. I
 2. Put `MC2Hytale-x.y.z.jar` in your server's `mods/` folder and start the server.
 3. Put schematics in `mods/MC2Hytale_MC2Hytale/schematics/`. Subfolders are fine.
 
+## Converter window
+
+`/mc2h gui` (or `/mc2h ui`) opens the converter window:
+
+- **Left side:** the schematics in the folder (click one to scan it), **Refresh**, **Convert all**, and the mapping profile switcher.
+- **Right side:** a summary of the build and every block in it with its count and what it becomes. Green means mapped, yellow means auto or fallback, red means no match, and grey means left out. The filter buttons show All, Problems, Auto, My rules or Skipped.
+- **Change** on a block opens the editor. Type part of a Hytale block name, click a match, then press **Use this**. You can also press **Leave out** to skip the block, or **Default** to remove your rule. The list rescans straight away.
+- **Convert to prefab** and **Paste where I stand** act on the picked schematic.
+
 ## Commands
 
 Every command requires the `mc2hytale.admin` permission. `/mc2hytale` is an alias for `/mc2h`.
 
 | Command | What it does |
 |---|---|
+| `/mc2h gui` | Open the converter window |
 | `/mc2h list` | Schematics in the folder |
 | `/mc2h scan <file>` | Block list with counts and mappings; writes `reports/<file>.csv` |
 | `/mc2h problems <file>` | Only the blocks with no good match |
@@ -86,7 +96,7 @@ Profile files look like this:
 ## Roadmap
 
 - World/region (`.mca`) import with chunked processing
-- In-game block mapping UI and side-by-side preview
+- Side-by-side 3D preview of original and converted builds
 - Prefab library with tags and thumbnails
 - Mapping history and undo
 

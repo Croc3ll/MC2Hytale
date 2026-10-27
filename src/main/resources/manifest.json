@@ -18,7 +18,7 @@
     },
     "DisabledByDefault": false,
     "Main": "com.mc2hytale.MC2HytalePlugin",
-    "IncludesAssetPack": false,
+    "IncludesAssetPack": true,
     "UpdateChecker": {
         "CurseForge": ""
     }

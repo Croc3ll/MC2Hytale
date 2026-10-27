@@ -1,0 +1,8 @@
+// MC2Hytale - one schematic in the converter window's file list (ConverterPage.fillFiles).
+$C = "../../Common.ui";
+
+Group {
+  LayoutMode: Top;
+  Anchor: (Bottom: 4);
+  $C.@SmallSecondaryTextButton #Mc2Open { @Text = ""; Anchor: (Height: $C.@SmallButtonHeight); }
+}

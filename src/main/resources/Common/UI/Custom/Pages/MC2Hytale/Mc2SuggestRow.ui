@@ -1,0 +1,8 @@
+// MC2Hytale - one Hytale block that matches the editor's search (ConverterPage.fillSuggestions).
+$C = "../../Common.ui";
+
+Group {
+  LayoutMode: Top;
+  Anchor: (Bottom: 2);
+  $C.@SmallTertiaryTextButton #Mc2Pick { @Text = ""; Anchor: (Height: $C.@SmallButtonHeight); }
+}
