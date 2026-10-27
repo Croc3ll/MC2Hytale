@@ -102,7 +102,40 @@ public final class SchematicCheck {
             check(true, "garbage rejected");
         }
 
+        // Litematica: 5 palette entries → 3 bits, so entry 21 straddles the first two longs; negative x size.
+        Schematic lite = SchematicLoader.load(gzip(litematic()));
+        check(lite.format().startsWith("Litematica") && lite.width() == 4 && lite.height() == 2 && lite.length() == 3,
+                "litematic size " + lite.width() + "x" + lite.height() + "x" + lite.length());
+        boolean allMatch = true;
+        for (int idx = 0; idx < 24; idx++) {
+            int x = idx % 4, z = (idx / 4) % 3, y = idx / 12;
+            if (!lite.palette().get(lite.at(x, y, z)).equals(LITE_PALETTE[LITE_VALUES[idx]])) {
+                allMatch = false;
+            }
+        }
+        check(allMatch, "litematic bit-packed blocks");
+
         check(ConverterService.safeName("houses/My House.schem").equals("my_house"), "safe name");
+
+        check("Wood_Softwood_Planks".equals(mapper.resolve("minecraft:stripped_oak_planks").target())
+                || mapper.resolve("minecraft:stripped_oak_log[axis=y]").target().equals("Wood_Oak_Trunk"), "stripped log");
+
+        // Any real files passed on the command line: load and summarise. --ids=<file> uses a full Hytale id list.
+        for (String path : args) {
+            if (path.startsWith("--ids=")) {
+                Set<String> all = new HashSet<>(java.nio.file.Files.readAllLines(java.nio.file.Path.of(path.substring(6))));
+                all.addAll(List.of("fluid:Water_Source", "fluid:Lava_Source"));
+                registry = BlockRegistry.of(all);
+                continue;
+            }
+            Schematic s = SchematicLoader.load(java.nio.file.Path.of(path));
+            ConversionPlan p = new ConversionPlan(s, new BlockMapper(new MappingRules(), defaults, registry, new Settings()));
+            System.out.printf("%s: %s %dx%dx%d, %d block types, %,d placed, %,d auto, %,d skipped, %,d unmapped%n",
+                    path, s.format(), s.width(), s.height(), s.length(), p.entries().size(), p.placed(),
+                    p.total(Status.AUTO), p.total(Status.SKIPPED), p.total(Status.UNMAPPED));
+            p.entries().stream().limit(60).forEach(e -> System.out.printf("  %,7d  %-40s %s %s%n", e.count(), e.source(),
+                    e.resolution().status(), e.resolution().target() == null ? "" : e.resolution().target()));
+        }
 
         if (failures > 0) {
             throw new AssertionError(failures + " check(s) failed");
@@ -155,6 +188,13 @@ public final class SchematicCheck {
                 out.write(b);
             }
             case 8 -> out.writeUTF((String) t.value);
+            case 12 -> {
+                long[] l = (long[]) t.value;
+                out.writeInt(l.length);
+                for (long v : l) {
+                    out.writeLong(v);
+                }
+            }
             case 9 -> {
                 Object[] v = (Object[]) t.value;
                 Tag[] items = (Tag[]) v[1];
@@ -204,6 +244,31 @@ public final class SchematicCheck {
         return compound("Width", s(2), "Height", s(1), "Length", s(2), "Materials", str("Alpha"),
                 "Blocks", bytes((byte) 1, (byte) 35, (byte) 53, (byte) 17),
                 "Data", bytes((byte) 0, (byte) 14, (byte) 3, (byte) 4));
+    }
+
+    private static final String[] LITE_PALETTE = {"minecraft:air", "minecraft:stone", "minecraft:dirt",
+            "minecraft:oak_planks", "minecraft:red_wool"};
+    private static final int[] LITE_VALUES = {1, 2, 3, 4, 0, 1, 2, 3, 4, 4, 3, 2, 1, 0, 1, 2, 3, 4, 4, 1, 2, 3, 4, 1};
+
+    private static Tag litematic() {
+        long[] longs = new long[2];
+        for (int idx = 0; idx < LITE_VALUES.length; idx++) {
+            long start = idx * 3L;
+            int word = (int) (start >>> 6), off = (int) (start & 63);
+            longs[word] |= (long) LITE_VALUES[idx] << off;
+            if (off + 3 > 64) {
+                longs[word + 1] |= (long) LITE_VALUES[idx] >>> (64 - off);
+            }
+        }
+        Tag[] palette = new Tag[LITE_PALETTE.length];
+        for (int p = 0; p < palette.length; p++) {
+            palette[p] = compound("Name", str(LITE_PALETTE[p]));
+        }
+        return compound("Version", i(6), "Regions", compound("House", compound(
+                "Position", compound("x", i(10), "y", i(0), "z", i(0)),
+                "Size", compound("x", i(-4), "y", i(2), "z", i(3)),
+                "BlockStatePalette", list(10, palette),
+                "BlockStates", new Tag(12, longs))));
     }
 
     private static Tag structureNbt() {

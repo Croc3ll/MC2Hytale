@@ -164,7 +164,7 @@ public final class MC2HytaleCommand extends AbstractCommandCollection {
             async(ctx, () -> {
                 List<String> files = service().listSchematics();
                 if (files.isEmpty()) {
-                    ctx.sendMessage(Msg.warn("No schematics yet. Put .schem, .schematic or .nbt files in " + service().schematicsDir()));
+                    ctx.sendMessage(Msg.warn("No schematics yet. Put .schem, .schematic, .nbt or .litematic files in " + service().schematicsDir()));
                     return;
                 }
                 ctx.sendMessage(Msg.info(files.size() + " schematic(s):"));

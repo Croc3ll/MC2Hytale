@@ -29,7 +29,7 @@ public final class SchematicLoader {
 
     public static boolean isSupportedFile(String name) {
         String n = name.toLowerCase();
-        return n.endsWith(".schem") || n.endsWith(".schematic") || n.endsWith(".nbt");
+        return n.endsWith(".schem") || n.endsWith(".schematic") || n.endsWith(".nbt") || n.endsWith(".litematic");
     }
 
     public static Schematic load(Path file) throws IOException {
@@ -54,7 +54,112 @@ public final class SchematicLoader {
         if (root.containsKey("size") && (root.containsKey("palette") || root.containsKey("palettes"))) {
             return structure(root);
         }
-        throw new IOException("Unrecognised file: not a Sponge .schem, MCEdit .schematic or structure .nbt");
+        if (Nbt.compound(root, "Regions") != null) {
+            return litematic(root);
+        }
+        throw new IOException("Unrecognised file: not a Sponge .schem, MCEdit .schematic, structure .nbt or .litematic");
+    }
+
+    // ---- Litematica ----
+
+    /**
+     * Litematica keeps one or more regions, each with its own position, a size that may be negative
+     * (the region grows the other way from its position), a palette and a bit-packed block array whose
+     * entries can straddle two longs. All regions are merged into one box.
+     */
+    @SuppressWarnings("unchecked")
+    private static Schematic litematic(Map<String, Object> root) throws IOException {
+        Map<String, Object> regions = Nbt.compound(root, "Regions");
+        if (regions.isEmpty()) {
+            throw new IOException("Litematic file has no regions");
+        }
+        record Region(int x, int y, int z, int w, int h, int l, List<String> palette, long[] states) {}
+        List<Region> list = new ArrayList<>();
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+        int blockEntities = 0;
+        int entities = 0;
+        for (Object o : regions.values()) {
+            Map<String, Object> r = (Map<String, Object>) o;
+            Map<String, Object> pos = Nbt.compound(r, "Position");
+            Map<String, Object> size = Nbt.compound(r, "Size");
+            List<Object> paletteTag = Nbt.list(r, "BlockStatePalette");
+            if (pos == null || size == null || paletteTag == null || !(r.get("BlockStates") instanceof long[] states)) {
+                throw new IOException("Litematic region is missing its position, size, palette or blocks");
+            }
+            int sx = Nbt.integer(size, "x", 0), sy = Nbt.integer(size, "y", 0), sz = Nbt.integer(size, "z", 0);
+            int w = Math.abs(sx), h = Math.abs(sy), l = Math.abs(sz);
+            checkSize(w, h, l);
+            // A negative size means the region extends from its position towards smaller coordinates.
+            int x = Nbt.integer(pos, "x", 0) + (sx < 0 ? sx + 1 : 0);
+            int y = Nbt.integer(pos, "y", 0) + (sy < 0 ? sy + 1 : 0);
+            int z = Nbt.integer(pos, "z", 0) + (sz < 0 ? sz + 1 : 0);
+            List<String> palette = new ArrayList<>(paletteTag.size());
+            for (Object p : paletteTag) {
+                Map<String, Object> entry = (Map<String, Object>) p;
+                String name = Nbt.string(entry, "Name");
+                palette.add(withProperties(name == null ? "minecraft:air" : name, Nbt.compound(entry, "Properties")));
+            }
+            list.add(new Region(x, y, z, w, h, l, palette, states));
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            minZ = Math.min(minZ, z);
+            maxX = Math.max(maxX, x + w - 1);
+            maxY = Math.max(maxY, y + h - 1);
+            maxZ = Math.max(maxZ, z + l - 1);
+            List<Object> te = Nbt.list(r, "TileEntities");
+            List<Object> ents = Nbt.list(r, "Entities");
+            blockEntities += te == null ? 0 : te.size();
+            entities += ents == null ? 0 : ents.size();
+        }
+
+        int w = maxX - minX + 1, h = maxY - minY + 1, l = maxZ - minZ + 1;
+        checkSize(w, h, l);
+        int[] cells = new int[w * h * l];
+        Arrays.fill(cells, Schematic.NONE);
+        Map<String, Integer> lookup = new TreeMap<>();
+        List<String> palette = new ArrayList<>();
+        for (Region r : list) {
+            int bits = Math.max(2, 32 - Integer.numberOfLeadingZeros(r.palette.size() - 1));
+            long mask = (1L << bits) - 1;
+            long volume = (long) r.w * r.h * r.l;
+            if ((volume * bits + 63) / 64 > r.states.length) {
+                throw new IOException("Litematic block data is shorter than its region");
+            }
+            int[] remap = new int[r.palette.size()];
+            for (int i = 0; i < remap.length; i++) {
+                String state = r.palette.get(i);
+                Integer idx = lookup.get(state);
+                if (idx == null) {
+                    idx = palette.size();
+                    palette.add(state);
+                    lookup.put(state, idx);
+                }
+                remap[i] = idx;
+            }
+            int i = 0;
+            for (int y = 0; y < r.h; y++) {
+                for (int z = 0; z < r.l; z++) {
+                    for (int x = 0; x < r.w; x++, i++) {
+                        long start = (long) i * bits;
+                        int word = (int) (start >>> 6);
+                        int offset = (int) (start & 63);
+                        long value = r.states[word] >>> offset;
+                        if (offset + bits > 64) {
+                            value |= r.states[word + 1] << (64 - offset);
+                        }
+                        int p = (int) (value & mask);
+                        if (p >= remap.length) {
+                            throw new IOException("Litematic block refers to palette entry " + p + " of " + remap.length);
+                        }
+                        int cx = r.x - minX + x, cy = r.y - minY + y, cz = r.z - minZ + z;
+                        cells[(cy * l + cz) * w + cx] = remap[p];
+                    }
+                }
+            }
+        }
+        return new Schematic("Litematica (" + list.size() + (list.size() == 1 ? " region)" : " regions)"),
+                w, h, l, palette, cells, blockEntities, entities);
     }
 
     // ---- Sponge v1 / v2 / v3 ----

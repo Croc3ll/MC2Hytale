@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 /**
  * Owns the plugin's data folder and the current mapping state:
  * <pre>
- * schematics/   drop .schem / .schematic / .nbt files here
+ * schematics/   drop .schem / .schematic / .nbt / .litematic files here
  * profiles/     mapping profiles; the active one is set in config.json
  * reports/      block list CSVs written by scan and convert
  * config.json   settings
@@ -122,7 +122,7 @@ public final class ConverterService {
     /** Finds a schematic by name, with or without extension; refuses paths outside the schematics folder. */
     public Path findSchematic(String name) throws IOException {
         Path dir = schematicsDir().toAbsolutePath().normalize();
-        for (String candidate : new String[]{name, name + ".schem", name + ".schematic", name + ".nbt"}) {
+        for (String candidate : new String[]{name, name + ".schem", name + ".schematic", name + ".nbt", name + ".litematic"}) {
             Path p = dir.resolve(candidate).normalize();
             if (p.startsWith(dir) && Files.isRegularFile(p)) {
                 return p;

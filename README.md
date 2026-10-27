@@ -8,6 +8,7 @@ A Hytale server plugin that converts Minecraft schematics into Hytale prefabs. I
   - Sponge `.schem` v1, v2 and v3 (WorldEdit 7+, FAWE)
   - Legacy MCEdit / WorldEdit 6 `.schematic` (numeric ids, translated to modern names)
   - Vanilla structure-block `.nbt`
+  - Litematica `.litematic` (all regions merged into one build)
 - **Block inspector.** `scan` lists every unique block with its count, percentage, and what it becomes. It also writes a full CSV report.
 - **Automatic mapping.** About 390 built-in rules cover stone, wood, soil, plants, wool, concrete, terracotta, glass, ores, lights, furniture and fluids. Every target is checked against the server's live block list.
 - **Smart shapes.** Stairs, slabs, walls and fences take their material's mapping and use the matching Hytale shape (`_Stairs`, `_Half`, `_Wall`, `_Fence`). For example, `oak_stairs` becomes `Wood_Softwood_Stairs`.

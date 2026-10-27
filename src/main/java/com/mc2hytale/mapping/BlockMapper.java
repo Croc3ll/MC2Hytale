@@ -63,7 +63,13 @@ public final class BlockMapper {
     }
 
     public Resolution resolve(String state) {
-        return cache.computeIfAbsent(state, this::compute);
+        // Not computeIfAbsent: compute() can resolve another state (stripped logs), which that would reject.
+        Resolution r = cache.get(state);
+        if (r == null) {
+            r = compute(state);
+            cache.put(state, r);
+        }
+        return r;
     }
 
     private Resolution compute(String state) {
@@ -96,6 +102,13 @@ public final class BlockMapper {
                 return shaped;
             }
         }
+        // Stripped logs and wood look close enough to the bark-covered kind.
+        if (base.contains(":stripped_")) {
+            Resolution plain = resolve(state.replace(":stripped_", ":"));
+            if (plain.places()) {
+                return new Resolution(plain.target(), Status.AUTO, plain.yaw(), plain.pitch(), plain.roll(), "as unstripped");
+            }
+        }
         return unmapped(Status.UNMAPPED, "no rule");
     }
 
@@ -121,6 +134,14 @@ public final class BlockMapper {
                 for (String candidate : new String[]{target + shape[1], trimmed + shape[1], trimmed + "_Planks" + shape[1]}) {
                     if (registry.exists(candidate)) {
                         return new Resolution(candidate, Status.AUTO, turn[0], turn[1], turn[2], "shape of " + target);
+                    }
+                }
+                // No shape for this exact block: try its family, e.g. Rock_Slate_Brick_Smooth → Rock_Slate_Brick_Stairs.
+                String family = trimmed;
+                while (family.indexOf('_') != family.lastIndexOf('_')) {
+                    family = family.substring(0, family.lastIndexOf('_'));
+                    if (registry.exists(family + shape[1])) {
+                        return new Resolution(family + shape[1], Status.AUTO, turn[0], turn[1], turn[2], "nearest shape to " + target);
                     }
                 }
             }

@@ -58,7 +58,7 @@ $C.@PageOverlay {
         LayoutMode: Top;
 
         Label #Mc2FileTitle { Text: "Pick a schematic"; Style: @Mc2HeadingStyle; Anchor: (Bottom: 4); }
-        Label #Mc2Summary { Text: "Put .schem, .schematic or .nbt files in the schematics folder, then pick one on the left."; Style: @Mc2InfoStyle; Anchor: (Bottom: 8); }
+        Label #Mc2Summary { Text: "Put .schem, .schematic, .nbt or .litematic files in the schematics folder, then pick one on the left."; Style: @Mc2InfoStyle; Anchor: (Bottom: 8); }
 
         Group {
           LayoutMode: Left;
