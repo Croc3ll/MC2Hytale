@@ -1,0 +1,25 @@
+{
+    "Group": "MC2Hytale",
+    "Name": "MC2Hytale",
+    "Version": "0.1.0",
+    "Description": "Converts Minecraft schematics (.schem, .schematic, .nbt) into Hytale prefabs with block listing and replacement rules.",
+    "Authors": [
+        {
+            "Name": "Croc3ll"
+        }
+    ],
+    "Website": "https://github.com/Croc3ll/MC2Hytale",
+    "ServerVersion": ">=0.7.2 <0.8.0",
+    "Dependencies": {
+        "Hytale:AssetModule": "*"
+    },
+    "OptionalDependencies": {
+        
+    },
+    "DisabledByDefault": false,
+    "Main": "com.mc2hytale.MC2HytalePlugin",
+    "IncludesAssetPack": false,
+    "UpdateChecker": {
+        "CurseForge": ""
+    }
+}
