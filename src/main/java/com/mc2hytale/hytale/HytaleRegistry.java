@@ -28,6 +28,13 @@ public final class HytaleRegistry implements BlockRegistry {
         return ids;
     }
 
+    @Override
+    public String stateKey(String id, String state) {
+        BlockType type = BlockType.getAssetMap().getAsset(id);
+        String key = type == null ? null : type.getBlockKeyForState(state);
+        return key != null && !key.equals(id) && blockIndex(key) != Integer.MIN_VALUE ? key : null;
+    }
+
     static int blockIndex(String id) {
         return BlockType.getAssetMap().getIndex(id);
     }

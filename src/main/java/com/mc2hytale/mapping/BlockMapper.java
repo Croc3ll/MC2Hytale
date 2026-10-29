@@ -66,10 +66,38 @@ public final class BlockMapper {
         // Not computeIfAbsent: compute() can resolve another state (stripped logs), which that would reject.
         Resolution r = cache.get(state);
         if (r == null) {
-            r = compute(state);
+            r = withState(state, Schematic.baseId(state), compute(state));
             cache.put(state, r);
         }
         return r;
+    }
+
+    /**
+     * Swaps in the Hytale block state that matches the Minecraft one: open trapdoors, and the corner
+     * pieces of stairs and roofs. Blocks without that state stay as they are.
+     */
+    private Resolution withState(String state, String base, Resolution r) {
+        if (!r.places() || r.target().startsWith("fluid:")) {
+            return r;
+        }
+        String wanted = null;
+        if (base.endsWith("_trapdoor") && "true".equals(Schematic.property(state, "open"))) {
+            wanted = "OpenDoorOut";
+        } else if (base.endsWith("_stairs")) {
+            String shape = Schematic.property(state, "shape");
+            if (shape != null && !shape.equals("straight")) {
+                // Upside-down stairs are flipped and turned round, which mirrors left and right.
+                boolean top = "top".equals(Schematic.property(state, "half"));
+                boolean left = shape.endsWith("_left") != top;
+                wanted = (shape.startsWith("inner") ? "Inverted_Corner_" : "Corner_") + (left ? "Left" : "Right");
+            }
+        }
+        String key = wanted == null ? null : registry.stateKey(r.target(), wanted);
+        if (key == null) {
+            return r;
+        }
+        String note = r.note().isEmpty() ? wanted : r.note() + ", " + wanted;
+        return new Resolution(key, r.status(), r.yaw(), r.pitch(), r.roll(), note);
     }
 
     private Resolution compute(String state) {
@@ -130,23 +158,37 @@ public final class BlockMapper {
             }
             boolean full = shape[0].equals("_slab") && "double".equals(Schematic.property(state, "type"));
             if (!full && !shape[1].isEmpty()) {
-                String trimmed = target.endsWith("_Planks") ? target.substring(0, target.length() - 7) : target;
-                for (String candidate : new String[]{target + shape[1], trimmed + shape[1], trimmed + "_Planks" + shape[1]}) {
-                    if (registry.exists(candidate)) {
-                        return new Resolution(candidate, Status.AUTO, turn[0], turn[1], turn[2], "shape of " + target);
-                    }
-                }
-                // No shape for this exact block: try its family, e.g. Rock_Slate_Brick_Smooth → Rock_Slate_Brick_Stairs.
-                String family = trimmed;
-                while (family.indexOf('_') != family.lastIndexOf('_')) {
-                    family = family.substring(0, family.lastIndexOf('_'));
-                    if (registry.exists(family + shape[1])) {
-                        return new Resolution(family + shape[1], Status.AUTO, turn[0], turn[1], turn[2], "nearest shape to " + target);
+                // Minecraft roofs are mostly stairs. Roofs have no upside-down form, so those stay stairs.
+                boolean roof = shape[0].equals("_stairs") && settings.stairsAsRoofs
+                        && !"top".equals(Schematic.property(state, "half"));
+                for (String suffix : roof ? new String[]{"_Roof", shape[1]} : new String[]{shape[1]}) {
+                    Resolution found = shapeOf(target, suffix, turn);
+                    if (found != null) {
+                        return found;
                     }
                 }
             }
             return new Resolution(target, Status.AUTO, turn[0], turn[1], turn[2],
                     full ? "double slab" : "no Hytale " + shape[0].substring(1) + " shape, full block used");
+        }
+        return null;
+    }
+
+    /** {@code Wood_Softwood_Planks} + {@code _Roof} → {@code Wood_Softwood_Roof}; null if there's no such block. */
+    private Resolution shapeOf(String target, String suffix, int[] turn) {
+        String trimmed = target.endsWith("_Planks") ? target.substring(0, target.length() - 7) : target;
+        for (String candidate : new String[]{target + suffix, trimmed + suffix, trimmed + "_Planks" + suffix}) {
+            if (registry.exists(candidate)) {
+                return new Resolution(candidate, Status.AUTO, turn[0], turn[1], turn[2], "shape of " + target);
+            }
+        }
+        // No shape for this exact block: try its family, e.g. Rock_Slate_Brick_Smooth → Rock_Slate_Brick_Stairs.
+        String family = trimmed;
+        while (family.indexOf('_') != family.lastIndexOf('_')) {
+            family = family.substring(0, family.lastIndexOf('_'));
+            if (registry.exists(family + suffix)) {
+                return new Resolution(family + suffix, Status.AUTO, turn[0], turn[1], turn[2], "nearest shape to " + target);
+            }
         }
         return null;
     }
@@ -181,6 +223,9 @@ public final class BlockMapper {
         int pitch = 0;
         int roll = 0;
         String facing = Schematic.property(state, "facing");
+        if (base.endsWith("_trapdoor")) {
+            return trapdoorTurn(state, facing);
+        }
         if (facing != null && settings.facingYaw.containsKey(facing)) {
             yaw = settings.facingYaw.get(facing) + settings.yawOffset;
         }
@@ -196,6 +241,21 @@ public final class BlockMapper {
             yaw += 2;
         }
         return new int[]{Math.floorMod(yaw, 4), pitch, roll};
+    }
+
+    /**
+     * Hytale's trapdoor (yaw 0) closes against the top of its block, hinged on the north edge, and opens
+     * down flat against the north side. A Minecraft trapdoor is hinged on the side opposite its
+     * {@code facing}, and a bottom-half one lies on the floor. So the hinge turns to the side opposite
+     * {@code facing}, and bottom-half ones are flipped upside down (which puts the hinge on the south edge).
+     */
+    private int[] trapdoorTurn(String state, String facing) {
+        if (facing == null || !settings.facingYaw.containsKey(facing)) {
+            return new int[3];
+        }
+        boolean flip = settings.flipBottomTrapdoors && !"top".equals(Schematic.property(state, "half"));
+        int yaw = settings.facingYaw.get(facing) + settings.yawOffset + (flip ? 0 : 2);
+        return new int[]{Math.floorMod(yaw, 4), flip ? 2 : 0, 0};
     }
 
     private static boolean isSkip(String target) {

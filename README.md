@@ -11,7 +11,7 @@ A Hytale server plugin that converts Minecraft schematics into Hytale prefabs. I
   - Litematica `.litematic` (all regions merged into one build)
 - **Block inspector.** `scan` lists every unique block with its count, percentage, and what it becomes. It also writes a full CSV report.
 - **Automatic mapping.** About 390 built-in rules cover stone, wood, soil, plants, wool, concrete, terracotta, glass, ores, lights, furniture and fluids. Every target is checked against the server's live block list.
-- **Smart shapes.** Stairs, slabs, walls and fences take their material's mapping and use the matching Hytale shape (`_Stairs`, `_Half`, `_Wall`, `_Fence`). For example, `oak_stairs` becomes `Wood_Softwood_Stairs`.
+- **Smart shapes.** Stairs, slabs, walls and fences take their material's mapping and use the matching Hytale shape (`_Roof`, `_Stairs`, `_Half`, `_Wall`, `_Fence`). For example, `oak_stairs` becomes `Wood_Softwood_Roof`, corners included.
 - **Replacement rules.** Use `map <minecraft> <hytale>` to override any block, globally or with `*` wildcards (`*_wool`). Mapping a block to `skip` removes it.
 - **Mapping profiles.** Keep separate rule sets (e.g. `medieval` and `modern`) and switch between them.
 - **Rotation.** Blocks follow Minecraft's `facing`, `axis` and upside-down stair states.
@@ -76,6 +76,8 @@ A rule that points at a block the server doesn't have shows up as `BAD RULE` in 
 | `fallbackBlock` | `Rock_Stone` | Used when `unmappedAction` is `fallback` |
 | `includeAir` | `false` | Write Minecraft air as empty blocks, so pasting clears the space |
 | `smartShapes` | `true` | Stairs/slab/wall/fence shape matching |
+| `stairsAsRoofs` | `true` | Stairs become the material's `_Roof` block (with corner pieces); upside-down stairs stay stairs |
+| `flipBottomTrapdoors` | `true` | Turn bottom-half trapdoors upside down so they lie on the floor instead of at the top of the block |
 | `rotateBlocks` | `true` | Apply `facing` / `axis` rotation |
 | `facingYaw` | N=0 W=1 S=2 E=3 | Quarter turns per Minecraft facing |
 | `yawOffset` | `0` | Extra quarter turns for every rotated block. Change this if stairs come out turned |

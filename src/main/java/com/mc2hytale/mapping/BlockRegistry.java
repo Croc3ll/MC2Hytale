@@ -10,6 +10,14 @@ public interface BlockRegistry {
 
     Collection<String> all();
 
+    /**
+     * The block key for one of a block's states ({@code OpenDoorOut}, {@code Corner_Left}, ...), or null
+     * when the block has no such state. Offline registries know no states.
+     */
+    default String stateKey(String hytaleId, String state) {
+        return null;
+    }
+
     /** A registry backed by a fixed list (offline checks, tests). */
     static BlockRegistry of(Set<String> ids) {
         return new BlockRegistry() {

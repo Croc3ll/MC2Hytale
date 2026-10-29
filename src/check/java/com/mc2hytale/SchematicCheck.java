@@ -64,6 +64,36 @@ public final class SchematicCheck {
         check(plan.problems().size() == 1 && plan.problems().get(0).source().equals("mymod:weird_block"), "one problem row");
         check(plan.placed() == 5, "placed count " + plan.placed());
 
+        // Stairs become roofs (upside-down ones stay stairs), with corner states; trapdoors turn and open.
+        Set<String> withRoofs = new HashSet<>(ids);
+        withRoofs.add("Wood_Softwood_Roof");
+        BlockRegistry states = new BlockRegistry() {
+            @Override
+            public boolean exists(String id) {
+                return withRoofs.contains(id) || id.startsWith("*");
+            }
+
+            @Override
+            public java.util.Collection<String> all() {
+                return withRoofs;
+            }
+
+            @Override
+            public String stateKey(String id, String state) {
+                return "*" + id + "_State_Definitions_" + state;
+            }
+        };
+        BlockMapper roofs = new BlockMapper(new MappingRules(), defaults, states, new Settings());
+        check("Wood_Softwood_Roof".equals(roofs.resolve("minecraft:oak_stairs[facing=east,half=bottom,shape=straight]").target()), "stairs → roof");
+        check("*Wood_Softwood_Roof_State_Definitions_Corner_Left".equals(
+                roofs.resolve("minecraft:oak_stairs[facing=east,half=bottom,shape=outer_left]").target()), "outer_left → Corner_Left");
+        check("*Wood_Softwood_Stairs_State_Definitions_Inverted_Corner_Left".equals(
+                roofs.resolve("minecraft:oak_stairs[facing=east,half=top,shape=inner_right]").target()), "upside-down inner_right → stairs Inverted_Corner_Left");
+        var bottomShut = roofs.resolve("minecraft:oak_trapdoor[facing=north,half=bottom,open=false]");
+        check("Furniture_Village_Trapdoor".equals(bottomShut.target()) && bottomShut.yaw() == 0 && bottomShut.pitch() == 2, "bottom trapdoor flipped: " + bottomShut);
+        var topOpen = roofs.resolve("minecraft:oak_trapdoor[facing=north,half=top,open=true]");
+        check(topOpen.target().endsWith("_OpenDoorOut") && topOpen.yaw() == 2 && topOpen.pitch() == 0, "top open trapdoor: " + topOpen);
+
         // Custom rules win over defaults; wildcards; invalid targets are reported.
         MappingRules custom = new MappingRules();
         custom.put("stone", "Rock_Stone_Brick_Stairs");

@@ -30,6 +30,15 @@ public final class Settings {
     /** Try {@code _Stairs}, {@code _Half}, {@code _Wall}, {@code _Fence} variants of a mapped material for shaped blocks. */
     public boolean smartShapes = true;
 
+    /** Stairs become their material's {@code _Roof} block (Minecraft roofs are mostly stairs). Upside-down stairs stay stairs. */
+    public boolean stairsAsRoofs = true;
+
+    /**
+     * Hytale trapdoors close against the top of their block. Turn bottom-half Minecraft trapdoors upside down
+     * so they lie on the floor like they did in Minecraft, instead of floating at the top of the cell.
+     */
+    public boolean flipBottomTrapdoors = true;
+
     /** Turn blocks to match their Minecraft {@code facing} / {@code axis} properties. */
     public boolean rotateBlocks = true;
 
