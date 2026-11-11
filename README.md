@@ -1,5 +1,7 @@
 # MC2Hytale
 
+[![Join the Discord](https://img.shields.io/badge/Discord-Crocell's%20Workshop-5865F2?logo=discord&logoColor=white)](https://discord.gg/maZTJbSs2h)
+
 A Hytale server plugin that converts Minecraft schematics into Hytale prefabs. It lists every block in the build, auto-maps blocks to their closest Hytale equivalents, and lets you replace any block with your own rules.
 
 ## Features
